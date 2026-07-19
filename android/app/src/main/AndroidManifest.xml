@@ -1,4 +1,25 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Dibutuhkan untuk scan barcode dan foto barang -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Dibutuhkan untuk backup/restore database & export/import Excel/PDF
+         (Android 12 ke bawah; Android 13+ menggunakan Scoped Storage / Photo Picker
+         sehingga permission ini otomatis diabaikan oleh sistem jika tidak relevan) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- Dibutuhkan untuk notifikasi stok menipis, kedaluwarsa, pengingat backup
+         (wajib dideklarasikan sejak Android 13 / API 33) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Menyatakan bahwa aplikasi memakai kamera, tapi tetap bisa dipasang di
+         perangkat tanpa kamera (misalnya tablet kasir tanpa kamera belakang) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
     <application
         android:label="kasir_app"
         android:name="${applicationName}"
@@ -40,6 +61,12 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Dibutuhkan agar share_plus (backup/export) bisa mendeteksi aplikasi
+             tujuan berbagi seperti Google Drive, WhatsApp, dll di Android 11+ -->
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
         </intent>
     </queries>
 </manifest>
