@@ -29,7 +29,7 @@ jobs:
         with:
           flutter-version: "3.38.2"
 
-      - name: Regenerate folder android
+      - name: Regenerate Android project
         run: |
           rm -rf android
           flutter create --platforms=android --org com.example .
@@ -38,40 +38,22 @@ jobs:
         run: |
           sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />|' android/app/src/main/AndroidManifest.xml
 
-      - name: Aktifkan core library desugaring
+      - name: Konfigurasi Android
         run: |
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
+          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 36/' android/app/build.gradle.kts
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 21)/' android/app/build.gradle.kts
           sed -i '/compileOptions {/a\        isCoreLibraryDesugaringEnabled = true' android/app/build.gradle.kts
-          sed -i 's|minSdk = flutter.minSdkVersion|minSdk = maxOf(flutter.minSdkVersion, 21)|' android/app/build.gradle.kts
 
-          cat >> android/app/build.gradle.kts << 'GRADLE_EOF'
+          cat >> android/app/build.gradle.kts << 'EOF'
 
-          dependencies {
-              coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-          }
-          GRADLE_EOF
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+}
+EOF
 
-      - name: Paksa semua plugin memakai compileSdk 36
-        run: |
-          cat >> android/build.gradle.kts << 'GRADLE_EOF'
-
-          subprojects {
-              afterEvaluate {
-                  if (plugins.hasPlugin("com.android.library")) {
-                      extensions.findByName("android")?.let { ext ->
-                          try {
-                              ext.javaClass
-                                  .getMethod("setCompileSdk", Int::class.java)
-                                  .invoke(ext, 36)
-                          } catch (_: Exception) {
-                          }
-                      }
-                  }
-              }
-          }
-          GRADLE_EOF
-
-          echo "===== android/build.gradle.kts ====="
-          cat android/build.gradle.kts
+          echo "===== android/app/build.gradle.kts ====="
+          cat android/app/build.gradle.kts
 
       - name: Install dependencies
         run: flutter pub get
