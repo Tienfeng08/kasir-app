@@ -7,11 +7,11 @@ class ProductProvider extends ChangeNotifier {
   final _db = DatabaseHelper.instance;
 
   List<Product> _products = [];
-  List<Category> _categories = [];
+  List<ProductCategory> _categories = [];
   bool isLoading = false;
 
   List<Product> get products => _products;
-  List<Category> get categories => _categories;
+  List<ProductCategory> get categories => _categories;
 
   List<Product> get lowStockProducts => _products.where((p) => p.isLowStock).toList();
   List<Product> get expiringProducts =>
@@ -48,7 +48,7 @@ class ProductProvider extends ChangeNotifier {
   }
 
   Future<void> addCategory(String name) async {
-    await _db.insertCategory(Category(name: name));
+    await _db.insertCategory(ProductCategory(name: name));
     await loadAll();
   }
 

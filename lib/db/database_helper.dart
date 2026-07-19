@@ -143,15 +143,15 @@ class DatabaseHelper {
   }
 
   // ---------------- CATEGORY ----------------
-  Future<int> insertCategory(Category c) async {
+  Future<int> insertCategory(ProductCategory c) async {
     final db = await database;
     return db.insert('categories', c.toMap()..remove('id'));
   }
 
-  Future<List<Category>> getCategories() async {
+  Future<List<ProductCategory>> getCategories() async {
     final db = await database;
     final rows = await db.query('categories', orderBy: 'name');
-    return rows.map((e) => Category.fromMap(e)).toList();
+    return rows.map((e) => ProductCategory.fromMap(e)).toList();
   }
 
   Future<int> deleteCategory(int id) async {

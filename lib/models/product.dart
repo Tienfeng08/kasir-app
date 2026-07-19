@@ -126,7 +126,11 @@ class Product {
   }
 }
 
-class class ProductCategory {
+/// Nama class sengaja "ProductCategory", BUKAN "Category", karena
+/// `package:flutter/foundation.dart` sudah mengekspor class bernama
+/// `Category` (dipakai untuk anotasi test seperti `@Category(['smoke'])`).
+/// Memakai nama yang sama akan menyebabkan error "imported from both...".
+class ProductCategory {
   final int? id;
   final String name;
   ProductCategory({this.id, required this.name});
