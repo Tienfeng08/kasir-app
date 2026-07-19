@@ -1,68 +1,33 @@
-name: Build APK & Publish Release
-
-# Workflow ini membangun APK Flutter lalu mengunggahnya sebagai ASSET pada
-# GitHub Release — bukan sebagai "artifact" biasa (actions/upload-artifact),
-# karena artifact biasa otomatis terhapus (retensi maksimal 90 hari).
-# Release asset TIDAK punya masa kedaluwarsa otomatis, jadi APK tetap ada
-# selamanya sampai dihapus manual.
+name: Build Flutter APK Artifact
 
 on:
   push:
-    branches: [main]        # build otomatis tiap push ke branch main
-    tags: ["v*"]            # atau saat push tag versi, misal v1.0.0
-  workflow_dispatch: {}      # bisa juga dijalankan manual dari tab Actions
-
-permissions:
-  contents: write            # wajib, supaya boleh membuat/mengubah Release
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout kode
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "17"
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.2'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.24.0"   # sesuaikan dengan versi Flutter yang dipakai
-          channel: "stable"
-          cache: true
+    - name: Install dependencies
+      run: flutter pub get
 
-      - name: Ambil dependency
-        run: flutter pub get
+    - name: Build APK
+      run: flutter build apk --release
 
-      - name: Build APK (release)
-        run: flutter build apk --release --split-per-abi
-
-      - name: Tentukan nama & tag release
-        id: vars
-        run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "tag_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-            echo "release_name=Kasir App ${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag_name=latest" >> "$GITHUB_OUTPUT"
-            echo "release_name=Kasir App (Build Terbaru)" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload APK ke GitHub Release (permanen)
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ steps.vars.outputs.tag_name }}
-          name: ${{ steps.vars.outputs.release_name }}
-          body: |
-            APK hasil build otomatis dari commit ${{ github.sha }}.
-            File tersedia permanen di halaman Release ini (tidak expired).
-          artifacts: "build/app/outputs/flutter-apk/*.apk"
-          allowUpdates: true          # kalau tag sudah ada, timpa dengan build baru
-          replacesArtifacts: true     # ganti file APK lama dengan yang baru
-          makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: pulsea-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
