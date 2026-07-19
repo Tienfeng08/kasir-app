@@ -1,36 +1,108 @@
-name: Build Flutter APK
+name: Build Flutter APK Artifact
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: "temurin"
+        java-version: "17"
 
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.38.2"
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.2'
 
-      - run: flutter pub get
+    - name: Regenerate folder android (samakan dengan Flutter SDK yang dipakai)
+      run: |
+        rm -rf android
+        flutter create --platforms=android --org com.example .
 
-      - name: Enable desugaring
-        run: |
-          sed -i '/compileOptions {/a\        isCoreLibraryDesugaringEnabled = true' android/app/build.gradle.kts
-          sed -i '/dependencies {/a\    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")' android/app/build.gradle.kts
+    - name: Tambahkan permission yang dibutuhkan aplikasi
+      run: |
+        sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />|' android/app/src/main/AndroidManifest.xml
 
-      - run: flutter build apk --release
+    - name: Aktifkan core library desugaring (dibutuhkan flutter_local_notifications)
+      run: |
+        sed -i '/compileOptions {/a\        isCoreLibraryDesugaringEnabled = true' android/app/build.gradle.kts
+        sed -i 's|minSdk = flutter.minSdkVersion|minSdk = maxOf(flutter.minSdkVersion, 21)|' android/app/build.gradle.kts
+        cat >> android/app/build.gradle.kts << 'GRADLE_EOF'
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+        dependencies {
+            coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+        }
+        GRADLE_EOF
+        echo "----- Final app/build.gradle.kts -----"
+        cat android/app/build.gradle.kts
+
+    - name: Perbaiki compileSdk plugin lama (fix error lStar)
+      run: |
+        cat > android/build.gradle.kts << 'ROOT_EOF'
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+
+        val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
+        rootProject.layout.buildDirectory.value(newBuildDir)
+
+        subprojects {
+            val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
+            project.layout.buildDirectory.value(newSubprojectBuildDir)
+        }
+
+        subprojects {
+            afterEvaluate {
+                val androidExt = extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
+                if (androidExt != null) {
+                    androidExt.compileSdkVersion(34)
+                }
+            }
+        }
+
+        subprojects {
+            project.evaluationDependsOn(":app")
+        }
+
+        tasks.register<Delete>("clean") {
+            delete(rootProject.layout.buildDirectory)
+        }
+        ROOT_EOF
+        echo "----- Final android/build.gradle.kts -----"
+        cat android/build.gradle.kts
+
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Build APK
+      run: flutter build apk --release
+
+    - name: Upload APK ke GitHub Release (permanen)
+      uses: ncipollo/release-action@v1
+      with:
+        tag: latest
+        name: "Kasir App (Build Terbaru)"
+        body: "APK hasil build otomatis dari commit ${{ github.sha }}."
+        artifacts: "build/app/outputs/flutter-apk/app-release.apk"
+        allowUpdates: true
+        replacesArtifacts: true
+        makeLatest: true
+        token: ${{ secrets.GITHUB_TOKEN }}
