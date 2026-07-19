@@ -1,74 +1,34 @@
-name: Build Flutter APK Artifact
+
+name: Build Flutter APK
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-
-permissions:
-  contents: write
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
 
 jobs:
   build:
-    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2  # Use the correct version
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.38.2"
+    - name: Install dependencies
+      run: flutter pub get
 
-      - name: Regenerate Android project
-        run: |
-          rm -rf android
-          flutter create --platforms=android --org com.example .
+    - name: Build APK
+      run: flutter build apk --release
 
-      - name: Tambahkan permission Android
-        run: |
-          sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />|' android/app/src/main/AndroidManifest.xml
-
-      - name: Konfigurasi Android
-        run: |
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 36/' android/app/build.gradle.kts
-          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 36/' android/app/build.gradle.kts
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 21)/' android/app/build.gradle.kts
-          sed -i '/compileOptions {/a\        isCoreLibraryDesugaringEnabled = true' android/app/build.gradle.kts
-
-          cat >> android/app/build.gradle.kts << 'EOF'
-
-dependencies {
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
-}
-EOF
-
-          echo "===== android/app/build.gradle.kts ====="
-          cat android/app/build.gradle.kts
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Upload APK ke GitHub Release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: latest
-          name: "Kasir App (Build Terbaru)"
-          body: "APK hasil build otomatis dari commit ${{ github.sha }}."
-          artifacts: build/app/outputs/flutter-apk/app-release.apk
-          allowUpdates: true
-          replacesArtifacts: true
-          makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: apk
+        path: build/app/outputs/flutter-apk/app-release.apk
