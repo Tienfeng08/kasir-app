@@ -126,12 +126,12 @@ class Product {
   }
 }
 
-class Category {
+class class ProductCategory {
   final int? id;
   final String name;
-  Category({this.id, required this.name});
+  ProductCategory({this.id, required this.name});
 
   Map<String, dynamic> toMap() => {'id': id, 'name': name};
-  factory Category.fromMap(Map<String, dynamic> map) =>
-      Category(id: map['id'] as int?, name: map['name'] as String);
+  factory ProductCategory.fromMap(Map<String, dynamic> map) =>
+      ProductCategory(id: map['id'] as int?, name: map['name'] as String);
 }
