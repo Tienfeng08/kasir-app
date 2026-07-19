@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build APK
@@ -13,12 +16,27 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: "temurin"
+        java-version: "17"
 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.38.2'
+
+    - name: Regenerate folder android (samakan dengan Flutter SDK yang dipakai)
+      run: |
+        rm -rf android
+        flutter create --platforms=android --org com.example .
+
+    - name: Tambahkan permission yang dibutuhkan aplikasi
+      run: |
+        sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />|' android/app/src/main/AndroidManifest.xml
 
     - name: Install dependencies
       run: flutter pub get
@@ -26,8 +44,14 @@ jobs:
     - name: Build APK
       run: flutter build apk --release
 
-    - name: Upload APK as artifact
-      uses: actions/upload-artifact@v4
+    - name: Upload APK ke GitHub Release (permanen)
+      uses: ncipollo/release-action@v1
       with:
-        name: pulsea-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+        tag: latest
+        name: "Kasir App (Build Terbaru)"
+        body: "APK hasil build otomatis dari commit ${{ github.sha }}."
+        artifacts: "build/app/outputs/flutter-apk/app-release.apk"
+        allowUpdates: true
+        replacesArtifacts: true
+        makeLatest: true
+        token: ${{ secrets.GITHUB_TOKEN }}
