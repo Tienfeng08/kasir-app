@@ -38,6 +38,19 @@ jobs:
       run: |
         sed -i 's|<manifest xmlns:android="http://schemas.android.com/apk/res/android">|<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />|' android/app/src/main/AndroidManifest.xml
 
+    - name: Aktifkan core library desugaring (dibutuhkan flutter_local_notifications)
+      run: |
+        sed -i '/compileOptions {/a\        isCoreLibraryDesugaringEnabled = true' android/app/build.gradle.kts
+        sed -i 's|minSdk = flutter.minSdkVersion|minSdk = maxOf(flutter.minSdkVersion, 21)|' android/app/build.gradle.kts
+        cat >> android/app/build.gradle.kts << 'GRADLE_EOF'
+
+        dependencies {
+            coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+        }
+        GRADLE_EOF
+        echo "----- Final build.gradle.kts -----"
+        cat android/app/build.gradle.kts
+
     - name: Install dependencies
       run: flutter pub get
 
