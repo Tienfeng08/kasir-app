@@ -73,7 +73,12 @@ jobs:
             afterEvaluate {
                 val androidExt = extensions.findByType(com.android.build.gradle.BaseExtension::class.java)
                 if (androidExt != null) {
-                    androidExt.compileSdkVersion(34)
+                    val currentSdk = androidExt.compileSdkVersion
+                        ?.removePrefix("android-")
+                        ?.toIntOrNull() ?: 0
+                    if (currentSdk < 36) {
+                        androidExt.compileSdkVersion(36)
+                    }
                 }
             }
         }
